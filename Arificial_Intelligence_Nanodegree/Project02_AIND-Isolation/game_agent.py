@@ -3,7 +3,7 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
-from isolation import *
+import isolation
 
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
@@ -35,6 +35,7 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
     # TODO: finish this function!
+    
     raise NotImplementedError
 
 
@@ -125,6 +126,7 @@ class MinimaxPlayer(IsolationPlayer):
     minimax to return a good move before the search time limit expires.
     """
 
+
     def get_move(self, game, time_left):
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
@@ -170,7 +172,10 @@ class MinimaxPlayer(IsolationPlayer):
         # Return the best move from the last completed search iteration
         return best_move
 
+    
     def minimax(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
 
@@ -209,12 +214,84 @@ class MinimaxPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (-1, -1)
+        else:
+            '''
+            action, state = argmax(game.successors(state),
+                           lambda ((a, s)): min_value(s))
+            '''
+            return self.Min_Value(game.forecast_move(legal_moves[0]),depth-1)
+
+        raise NotImplementedError
+    #using exclusive recurrsive techniques
+    #prepare variables used in max and min value function
+    
+
+    def Max_Value(self,gameStatus, currentDepth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+        # v = -infinity
+        max_highest_score_so_far = float("-inf")
+        max_best_move_so_far = (-1, -1)
+        player_legal_moves = gameStatus.get_legal_moves()
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+        max_level_score = None
+        if currentDepth == 1:  # handle the situation of level 1
+            for move in player_legal_moves:
+                # Evaluate this move.
+                max_level_score = self.score(
+                    gameStatus.forecast_move(move), self)
+                # If this is a winning move, no need to search further. Otherwise, remember the best move.
+                if max_level_score == float("inf"):
+                    return max_level_score, move
+                if max_level_score > max_highest_score_so_far:
+                    max_highest_score_so_far, max_best_move_so_far = max_level_score, move
+            return max_highest_score_so_far, max_best_move_so_far
+        else:
+            for move in player_legal_moves:
+                # Evaluate this move in depth.
+                max_level_score, _ = self.Min_Value(
+                    gameStatus.forecast_move(move), currentDepth - 1)
+                # If this branch yields a sure win, no need to search further. Otherwise, remember the best move.
+                if max_level_score == float("inf"):
+                    return max_level_score, move
+                if max_level_score > max_highest_score_so_far:
+                    highest_score_so_far, best_move_so_far = max_level_score, move
+            return highest_score_so_far, best_move_so_far
+
+    def Min_Value(self,gameStatus, currentDepth):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
-
+        min_lowest_score_so_far = float("inf"), float("-inf")
+        min_best_move_so_far = (-1, -1)
+        min_level_score = None
+        player_legal_moves = gameStatus.get_legal_moves()
+        if currentDepth == 1:
+            for move in player_legal_moves:
+                # Evaluate this move.
+                score = self.score(gameStatus.forecast_move(move), self)
+                # If this is a winning move, no need to search further. Otherwise, remember the best move.
+                if min_level_score == float("-inf"):
+                    return min_level_score, move
+                
+                if min_level_score < min_lowest_score_so_far:
+                    min_lowest_score_so_far, min_best_move_so_far = min_level_score, move
+            return min_lowest_score_so_far, min_best_move_so_far
+        else:
+            for move in player_legal_moves:
+                # Evaluate this move in depth.
+                min_level_score, _ = self.Max_Value(
+                    gameStatus.forecast_move(move), currentDepth - 1)
+                # If this branch yields a sure win, no need to search further. Otherwise, remember the best move.
+                if min_level_score == float("-inf"):
+                    return min_level_score, move
+                if min_level_score < min_lowest_score_so_far:
+                    min_lowest_score_so_far, min_best_move_so_far = min_level_score, move
+            return min_lowest_score_so_far, min_best_move_so_far
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
@@ -223,6 +300,8 @@ class AlphaBetaPlayer(IsolationPlayer):
     """
 
     def get_move(self, game, time_left):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
         """Search for the best move from the available legal moves and return a
         result before the time limit expires.
 
@@ -253,9 +332,23 @@ class AlphaBetaPlayer(IsolationPlayer):
             (-1, -1) if there are no available legal moves.
         """
         self.time_left = time_left
-
-        # TODO: finish this function!
-        raise NotImplementedError
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (-1, -1)
+        # Did we just start the game? Then, of course, pick the center position.
+        if game.move_count == 0:
+            return(int(game.height / 2), int(game.width / 2))
+        # Let's search for a good move!
+        best_move_so_far = (-1, -1)
+        
+        iterative_search_depth = 1
+        while True:
+            best_score_so_far, best_move_so_far = self.alphabeta(game, iterative_search_depth)
+            if best_score_so_far == float("inf") or best_score_so_far == float("-inf"):
+                break
+            iterative_search_depth += 1
+        # Return the best move from the last completed search iteration
+        return best_move_so_far
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
         """Implement depth-limited minimax search with alpha-beta pruning as
@@ -302,18 +395,104 @@ class AlphaBetaPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
+        """
+        # Body of alphabeta_search starts here:
+         action, state = argmax(game.successors(state),lambda ((a, s)): min_value(s, -infinity, infinity))
+         return action
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
-
-        # Recurssive programming
-        if depth == 0 and game.NOT_MOVED:
-            return best_move
-
-        # if maximizingPlayer :
-            #return self.alphabeta(...)
-
-        # if not maximizingPlayer :
-            #return self.alphabeta(...)
+        legal_moves = game.get_legal_moves()
+        if not legal_moves:
+            return (-1, -1)
+        else:
+            return self.min_search(game.forecast_move(legal_moves[0]), depth, alpha=float("-inf"), beta=float("inf"))
+    
+    def max_search(self,gameStatus,currentDepth,alpha,beta):
+        
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+        # set variabes
+        maximize_highest_score_so_far = float("-inf")  # v = -infinity
+        maximize_best_move_so_far = (-1, -1)
+        #get moves
+        maximize_legal_moves = gameStatus.get_legal_moves()
+        #dealing depth == 1 : end condition
+        """
+        if game.terminal_test(state):
+            return game.utility(state, player)
+        v = -infinity
+        for (a, s) in game.successors(state):
+            v = max(v, min_value(s, alpha, beta))
+            if v >= beta:
+                return v
+            alpha = max(alpha, v)
+        """
+        if currentDepth == 1:
+            for move in maximize_legal_moves:
+                # Evaluate this move.
+                maximize_score = self.score(gameStatus.forecast_move(move), self)
+                # If this is a score better than beta, no need to search further. Otherwise, remember the best move.
+                if maximize_score >= beta:
+                    return maximize_score, move
+                if maximize_score > maximize_highest_score_so_far:
+                    maximize_highest_score_so_far, maximize_best_move_so_far = maximize_score, move
+            return maximize_highest_score_so_far, maximize_best_move_so_far
+        else:
+            for move in maximize_legal_moves:
+                # Evaluate this move in depth.
+                maximize_score, _ = self.min_search(gameStatus.forecast_move(
+                    move), currentDepth - 1, alpha, beta)
+                # If this branch yields a score better than beta, no need to search further.
+                if maximize_score >= beta:
+                    return maximize_score, move
+                # Otherwise, remember the best move and update alpha.
+                if maximize_score > maximize_highest_score_so_far:
+                    maximize_highest_score_so_far, maximize_best_move_so_far = maximize_score, move
+                alpha = max(alpha, maximize_highest_score_so_far)
+            return maximize_highest_score_so_far, maximize_best_move_so_far
+        
+    def min_search(self, gameStatus, currentDepth,alpha,beta):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise SearchTimeout()
+        # set variabes
+        minimize_lowest_score_so_far = float("inf")  # v = infinity
+        minimize_best_move_so_far = (-1, -1)
+        #get moves
+        minimize_legal_moves = gameStatus.get_legal_moves()
+        #dealing depth == 1 : end condition
+        if currentDepth == 1:
+            for move in minimize_legal_moves:
+                # Evaluate this move.
+                minimize_score = self.score(gameStatus.forecast_move(move), self)
+                # If this is a score worse than alpha, no need to search further. Otherwise, remember the best move.
+                if minimize_score <= alpha:
+                    return minimize_score, move
+                if minimize_score < minimize_lowest_score_so_far:
+                        minimize_lowest_score_so_far, minimize_best_move_so_far = minimize_score, move
+            return minimize_lowest_score_so_far, minimize_best_move_so_far
+        else:
+            """
+            if game.terminal_test(state):
+            return game.utility(state, player)
+            v = infinity
+            for (a, s) in game.successors(state):
+                v = min(v, max_value(s, alpha, beta))
+                if v <= alpha:
+                return v
+                beta = min(beta, v)
+            return v
+            """
+            for move in minimize_legal_moves:
+                # Evaluate this move in depth.
+                minimize_score, _ = self.max_search(gameStatus.forecast_move(
+                    move), currentDepth - 1, alpha, beta)
+                # If this branch yields a score worse than alpha, no need to search further.
+                if minimize_score <= alpha:
+                    return minimize_score, move
+                # Otherwise, remember the best move and update beta.
+                if minimize_score < minimize_lowest_score_so_far:
+                    minimize_lowest_score_so_far, minimize_best_move_so_far = minimize_score, move
+                beta = min(beta, minimize_lowest_score_so_far)
+            return minimize_lowest_score_so_far, minimize_best_move_so_far
